@@ -3,6 +3,7 @@ package aws_s3
 import (
 	"context"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
@@ -14,6 +15,7 @@ type Config struct {
 	IsEnabled       bool   `yaml:"is-enable"`
 	IsUserEnabled   bool   `yaml:"is-user-enable"`
 	Region          string `yaml:"region"`
+	Endpoint        string `yaml:"endpoint"`
 	BucketName      string `yaml:"bucket-name"`
 	AccessKeyID     string `yaml:"access-key-id"`
 	AccessKeySecret string `yaml:"access-key-secret"`
@@ -59,6 +61,7 @@ func NewClient(cf map[string]any) (*S3, error) {
 		IsEnabled:       IsEnabled,
 		IsUserEnabled:   IsUserEnabled,
 		Region:          cf["Region"].(string),
+		Endpoint:        cf["Endpoint"].(string),
 		BucketName:      cf["BucketName"].(string),
 		AccessKeyID:     cf["AccessKeyID"].(string),
 		AccessKeySecret: cf["AccessKeySecret"].(string),
@@ -81,7 +84,11 @@ func NewClient(cf map[string]any) (*S3, error) {
 		return nil, errors.Wrap(err, "aws_s3")
 	}
 
-	client := s3.NewFromConfig(cfg, func(o *s3.Options) {})
+	client := s3.NewFromConfig(cfg, func(o *s3.Options) {
+		if conf.Endpoint != "" {
+			o.BaseEndpoint = aws.String(conf.Endpoint)
+		}
+	})
 
 	if err != nil {
 		return nil, errors.Wrap(err, "aws_s3")

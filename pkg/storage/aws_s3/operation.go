@@ -31,7 +31,9 @@ func (p *S3) SendFile(fileKey string, file io.Reader, itype string) (string, err
 	ctx := context.Background()
 	bucket := p.GetBucket("")
 
-	fileKey = fileurl.PathSuffixCheckAdd(p.Config.CustomPath, "/") + fileKey
+	if p.Config.CustomPath != "" {
+		fileKey = fileurl.PathSuffixCheckAdd(p.Config.CustomPath, "/") + fileKey
+	}
 
 	//  k, _ := h.Open()
 
@@ -54,7 +56,9 @@ func (p *S3) SendContent(fileKey string, content []byte) (string, error) {
 	ctx := context.Background()
 	bucket := p.GetBucket("")
 
-	fileKey = fileurl.PathSuffixCheckAdd(p.Config.CustomPath, "/") + fileKey
+	if p.Config.CustomPath != "" {
+		fileKey = fileurl.PathSuffixCheckAdd(p.Config.CustomPath, "/") + fileKey
+	}
 
 	input := &s3.PutObjectInput{
 		Bucket:            aws.String(bucket),
