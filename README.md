@@ -22,6 +22,56 @@ lascivea/custom-image-gateway-b2:latest
 
 Built for `linux/amd64` and `linux/arm64`.
 
+## Deploy with Docker Compose
+
+1. Clone this repository:
+
+```bash
+git clone https://github.com/lascivea/custom-image-gateway-b2.git
+cd custom-image-gateway-b2
+```
+
+2. Copy the compose template and config template:
+
+```bash
+cp docker-compose.example.yaml docker-compose.yaml
+cp config/config.yaml config/config.yaml
+```
+
+3. Edit `config/config.yaml` and fill in your credentials and endpoint.
+
+4. Start the service:
+
+```bash
+docker compose pull
+docker compose up -d
+```
+
+5. Check logs:
+
+```bash
+docker logs -f image-api
+```
+
+### Compose template
+
+`docker-compose.example.yaml`:
+
+```yaml
+services:
+  image-api:
+    image: lascivea/custom-image-gateway-b2:latest
+    container_name: image-api
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - ./config/:/api/config/
+      - ./storage/:/api/storage/
+    restart: always
+    pull_policy: always
+```
+
 ## Quick start
 
 ```bash

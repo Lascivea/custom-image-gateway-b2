@@ -1,0 +1,12 @@
+services:
+  image-api:
+    image: lascivea/custom-image-gateway-b2:latest
+    container_name: image-api
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - ./config/:/api/config/
+      - ./storage/:/api/storage/
+    restart: always
+    pull_policy: always
