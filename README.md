@@ -1,172 +1,84 @@
-[中文文档](readme-zh.md) / [English Document](README.md)
+# Custom Image Gateway - B2 / S3-Compatible
 
-# Custom Image Gateway
+A fork of [haierkeys/custom-image-gateway](https://github.com/haierkeys/custom-image-gateway) that adds **custom S3 endpoint support**, making it work with **Backblaze B2** and other S3-compatible object storage services.
 
-<p align="center">
-    <img src="https://img.shields.io/github/release/haierkeys/custom-image-gateway" alt="version">
-    <img src="https://img.shields.io/github/license/haierkeys/custom-image-gateway" alt="license">
-</p>
+## Why this fork?
 
-This project provides image upload, storage, and cloud synchronization services for the [Obsidian Custom Image Auto Uploader](https://github.com/haierkeys/obsidian-custom-image-auto-uploader) plugin.
+The upstream project supports AWS S3, but the S3 endpoint is hard-coded to AWS. Backblaze B2, Cloudflare R2, MinIO, and many other providers expose an S3-compatible API that requires a custom endpoint. This fork adds an `endpoint` field to the S3 storage configuration so you can use any of them.
 
-## Features
+## What changed
 
-- [x] Image Upload
-- [x] Token Authorization for improved API security
-- [x] Image HTTP Access (Basic feature, Nginx is recommended for production)
-- [x] Storage Support:
-  - [x] Save to both local and cloud storage for easy migration
-  - [x] Local Storage Support (Tested, suitable for NAS)
-  - [x] Alibaba Cloud OSS Support (Implemented, not yet tested)
-  - [x] Cloudflare R2 Support (Implemented and tested)
-  - [x] Amazon S3 Support (Implemented and tested)
-  - [x] MinIO Storage Support (v1.5+)
-  - [x] WebDAV Storage Support (v2.5+)
-  - [x] DogeCloud Storage Support (v2.6+)
-- [x] Docker Support for easy deployment on home NAS or remote servers
-- [x] Public Service API & Web Interface <a href="#userapi">User Public Interface & Web Interface</a>
+- `pkg/storage/aws_s3/s3.go`: Added `Endpoint` field and inject it into the AWS SDK via `BaseEndpoint`.
+- `pkg/storage/aws_s3/operation.go`: Fixed the double-slash bug when `CustomPath` is empty.
+- `frontend/assets/index-*.js`: Added an **Endpoint** input field to the S3 configuration form in the WebUI.
+- `config/config.yaml`: Added an `endpoint` example for the `aws-s3` section.
+- Docker Hub image published via GitHub Actions.
 
-## Changelog
+## Docker image
 
-For the full changelog, please visit [Changelog](https://github.com/haierkeys/custom-image-gateway/releases).
+```
+lascivea/custom-image-gateway-b2:latest
+```
 
-## Pricing
+Built for `linux/amd64` and `linux/arm64`.
 
-This software is open source and free. If you'd like to express your gratitude or support continued development, you can do so via:
+## Quick start
 
-[<img src="https://cdn.ko-fi.com/cdn/kofi3.png?v=3" alt="BuyMeACoffee" width="100">](https://ko-fi.com/haierkeys)
+```bash
+git clone https://github.com/lascivea/custom-image-gateway-b2.git
+cd custom-image-gateway-b2
 
-## Quick Start
+mkdir -p config
+cp config/config.yaml config/config.yaml
 
-### Installation
+# Edit config/config.yaml and fill in your credentials and endpoint
+# docker compose pull && docker compose up -d
+```
 
-- **Directory Setup**
+### Backblaze B2 example
 
-  ```bash
-  # Create directories required for the project
-  mkdir -p /data/image-api
-  cd /data/image-api
+```yaml
+aws-s3:
+  is-enable: true
+  is-user-enable: true
+  region: us-west-004
+  endpoint: https://s3.us-west-004.backblazeb2.com
+  bucket-name: your-bucket-name
+  access-key-id: YOUR_B2_KEY_ID
+  access-key-secret: YOUR_B2_KEY_SECRET
+  custom-path: ""
+```
 
-  mkdir -p ./config && mkdir -p ./storage/logs && mkdir -p ./storage/uploads
-  ```
+### WebUI setup
 
-  On the first run, if no configuration file is found, the program will automatically generate a default configuration at **config/config.yaml**.
+1. Open `http://your-server-ip:9000`.
+2. Register and log in.
+3. Add an S3 storage configuration and enter your endpoint, region, bucket, and credentials.
+4. Set the **访问地址前缀** (URL prefix) to your public CDN or proxy domain, e.g. `https://img.example.com`.
 
-  If you want to download a default configuration from the internet, use the following command:
+### Cloudflare CDN example
 
-  ```bash
-  # Download default configuration file to the config directory
-  wget -P ./config/ https://raw.githubusercontent.com/haierkeys/custom-image-gateway/main/config/config.yaml
-  ```
+DNS:
 
-- **Binary Installation**
+| Type | Name | Target | Proxy |
+|------|------|--------|-------|
+| CNAME | `img` | `f000.backblazeb2.com` | On |
 
-  Download the latest version from [Releases](https://github.com/haierkeys/custom-image-gateway/releases), unzip it, and run:
+Transform Rule:
 
-  ```bash
-  ./image-api run -c config/config.yaml
-  ```
+- Rule name: `B2 image bucket rewrite`
+- Hostname equals: `img.example.com`
+- Rewrite path: Dynamic
+- Expression: `concat("/file/your-bucket-name", http.request.uri.path)`
 
-- **Containerized Installation (Docker)**
+## Companion Obsidian plugin
 
-  Docker Command:
+Use this server with the matching Obsidian plugin fork:
 
-  ```bash
-  # Pull the latest image
-  docker pull haierkeys/custom-image-gateway:latest
+- [`lascivea/obsidian-pic-cloud`](https://github.com/lascivea/obsidian-pic-cloud)
 
-  # Create and start the container
-  docker run -tid --name image-api \
-          -p 9000:9000 -p 9001:9001 \
-          -v /data/image-api/storage/:/api/storage/ \
-          -v /data/image-api/config/:/api/config/ \
-          haierkeys/custom-image-gateway:latest
-  ```
+It supports both `![[wikilink]]` and standard `![alt](path)` Markdown image links, drag-and-drop uploads, frontmatter per-file toggles, and more.
 
-  Docker Compose
-  Use *containrrr/watchtower* to monitor the image for automatic updates.
-  **docker-compose.yaml** content:
+## License
 
-  ```yaml
-  # docker-compose.yaml
-  services:
-    image-api:
-      image: haierkeys/custom-image-gateway:latest  # Your application image
-      container_name: image-api
-      ports:
-        - "9000:9000"  # Port mapping 9000
-        - "9001:9001"  # Port mapping 9001
-      volumes:
-        - /data/image-api/storage/:/api/storage/  # Storage directory mapping
-        - /data/image-api/config/:/api/config/    # Config directory mapping
-      restart: always
-
-  ```
-
-  Execute **docker compose**:
-
-  Register docker container as a service:
-
-  ```bash
-  docker compose up -d
-  ```
-
-  Stop and remove docker container:
-
-  ```bash
-  docker compose down
-  ```
-
-### Usage
-
-- **Using Single Service Gateway**
-
-	Supports `Local Storage`, `OSS`, `Cloudflare R2`, `Amazon S3`, `MinIO`, `WebDAV`, `DogeCloud`.
-
-	You need to modify [config.yaml](config/config.yaml#http-port).
-
-	Modify `http-port` and `auth-token` options.
-
-	Start the gateway program.
-
-	API Gateway Address: `http://{IP:PORT}/api/upload`
-
-	API Access Token: content of `auth-token`
-
-- **Using Multi-User Open Gateway**
-
-	Supports `Local Storage`, `OSS`, `Cloudflare R2`, `Amazon S3`, `MinIO` (v2.3+), `WebDAV` (v2.5+), `DogeCloud` (v2.6+).
-
-	You need to modify [config.yaml](config/config.yaml#user).
-
-	Modify `http-port` and `database`.
-
-	Also change `user.is-enable` and `user.register-is-enable` to `true`.
-
-	Start the gateway program.
-
-	Access `WebGUI` address `http://{IP:PORT}` for user registration and configuration.
-
-	![Image](https://github.com/user-attachments/assets/39c798de-b243-42c1-a75a-cd179913fc49)
-
-	API Gateway Address: `http://{IP:PORT}/api/user/upload`
-
-	Click on `WebGUI` -> Copy API Config to get configuration information.
-
-- **Storage Type Explanation**
-
-  | Storage Type         | Description                                                                                                                                                                                                                                                                                                                                                                                                  |
-  |----------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-  | Local Server Storage | Default save path: `/data/storage/uploads`. Config item `config.local-fs.save-path` is `storage/uploads`. <br />If using gateway image resource access service, set `config.local-fs.httpfs-is-enable` to `true`. <br /> Corresponding `Access Address Prefix` is `http://{IP:PORT}`. For single service gateway, set `config.app.upload-url-pre`. <br />It is recommended to use Nginx for resource access. |
-
-### Configuration
-
-The default configuration file name is **config.yaml**. Please place it in the **root directory** or **config** directory.
-
-For more configuration details, please refer to:
-
-- [config/config.yaml](config/config.yaml)
-
-## Other Resources
-
-- [Obsidian Custom Image Auto Uploader](https://github.com/haierkeys/obsidian-custom-image-auto-uploader)
+Apache-2.0, same as the upstream project.
