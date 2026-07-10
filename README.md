@@ -12,6 +12,7 @@ The upstream project supports AWS S3, but the S3 endpoint is hard-coded to AWS. 
 - `pkg/storage/aws_s3/operation.go`: Fixed the double-slash bug when `CustomPath` is empty.
 - `frontend/assets/index-*.js`: Added an **Endpoint** input field to the S3 configuration form in the WebUI.
 - `config/config.yaml`: Added an `endpoint` example for the `aws-s3` section.
+- `global/config.go`: Added environment variable support for `UPLOAD_MAX_SIZE`, `IMAGE_MAX_SIZE_WIDTH`, and `IMAGE_MAX_SIZE_HEIGHT`.
 - Docker Hub image published via GitHub Actions.
 
 ## Docker image
@@ -65,6 +66,10 @@ services:
     ports:
       - "9000:9000"
       - "9001:9001"
+    environment:
+      - UPLOAD_MAX_SIZE=50
+      - IMAGE_MAX_SIZE_WIDTH=0
+      - IMAGE_MAX_SIZE_HEIGHT=0
     volumes:
       - ./config/:/api/config/
       - ./storage/:/api/storage/
