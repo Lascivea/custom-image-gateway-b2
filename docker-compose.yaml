@@ -5,6 +5,10 @@ services:
     ports:
       - "9000:9000"
       - "9001:9001"
+    environment:
+      - UPLOAD_MAX_SIZE=50
+      - IMAGE_MAX_SIZE_WIDTH=0
+      - IMAGE_MAX_SIZE_HEIGHT=0
     volumes:
       - ./config/:/api/config/
       - ./storage/:/api/storage/

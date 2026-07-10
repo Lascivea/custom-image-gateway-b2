@@ -2,6 +2,7 @@ package global
 
 import (
 	"os"
+	"strconv"
 
 	"github.com/haierkeys/custom-image-gateway/pkg/fileurl"
 	"github.com/haierkeys/custom-image-gateway/pkg/storage/aliyun_oss"
@@ -164,6 +165,24 @@ func ConfigLoad(f string) (string, error) {
 		return realpath, errors.Wrap(err, "parse config file failed")
 	}
 	Config = c
+
+	// 环境变量覆盖全局上传/尺寸限制配置
+	if v := os.Getenv("UPLOAD_MAX_SIZE"); v != "" {
+		if size, err := strconv.Atoi(v); err == nil && size > 0 {
+			Config.App.UploadMaxSize = size
+		}
+	}
+	if v := os.Getenv("IMAGE_MAX_SIZE_WIDTH"); v != "" {
+		if w, err := strconv.Atoi(v); err == nil && w >= 0 {
+			Config.App.ImageMaxSizeWidth = w
+		}
+	}
+	if v := os.Getenv("IMAGE_MAX_SIZE_HEIGHT"); v != "" {
+		if h, err := strconv.Atoi(v); err == nil && h >= 0 {
+			Config.App.ImageMaxSizeHeight = h
+		}
+	}
+
 	return realpath, nil
 
 }

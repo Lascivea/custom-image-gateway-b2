@@ -106,6 +106,18 @@ aws-s3:
 3. Add an S3 storage configuration and enter your endpoint, region, bucket, and credentials.
 4. Set the **访问地址前缀** (URL prefix) to your public CDN or proxy domain, e.g. `https://img.example.com`.
 
+### Environment variables
+
+The following environment variables override `config.yaml` values and are useful for quickly tuning upload behavior without editing the config file:
+
+| Variable | Description | Default from `config.yaml` |
+|----------|-------------|----------------------------|
+| `UPLOAD_MAX_SIZE` | Maximum single file upload size in MB | `5` |
+| `IMAGE_MAX_SIZE_WIDTH` | Server-side image resize width limit, `0` disables | `800` |
+| `IMAGE_MAX_SIZE_HEIGHT` | Server-side image resize height limit, `0` disables | `800` |
+
+Set them in `docker-compose.yaml` under `environment:`.
+
 ### Cloudflare CDN example
 
 DNS:
