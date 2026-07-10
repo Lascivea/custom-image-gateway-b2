@@ -1,57 +1,39 @@
-FROM woahbase/alpine-glibc:latest
-MAINTAINER HaierKeys <haierkeys@gmail.com>
-ARG TARGETOS
-ARG TARGETARCH
-ARG VERSION
-ARG BUILD_DATE
-ARG GIT_COMMIT
+FROM golang:1.24-bookworm AS builder
+WORKDIR /app
+RUN apt-get update && apt-get install -y git ca-certificates && rm -rf /var/lib/apt/lists/*
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o build/linux_amd64/image-api .
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -o build/linux_arm64/image-api .
 
-ARG VERSION=${VERSION}
-ARG BUILD_DATE=${BUILD_DATE}
-ARG GIT_COMMIT=${GIT_COMMIT}
-
-
-
-LABEL name="custom-image-gateway"
-LABEL version=${VERSION}
-LABEL description="Provide image resizing, cropping, upload/download, and cloud storage features for Obsidian CIAU."
-LABEL maintainer="HaierKeys <haierkeys@gmail.com>"
-
-
-LABEL org.opencontainers.image.title="Obsidian Image API Gateway"
-LABEL org.opencontainers.image.created=${BUILD_DATE}
-LABEL org.opencontainers.image.authors="HaierKeys <haierkeys@gmail.com>"
-LABEL org.opencontainers.image.version=${VERSION}
-LABEL org.opencontainers.image.description="Provide image resizing, cropping, upload/download, and cloud storage features for Obsidian CIAU."
-LABEL org.opencontainers.image.url="https://github.com/haierkeys/custom-image-gateway"
-LABEL org.opencontainers.image.source="https://github.com/haierkeys/custom-image-gateway"
-LABEL org.opencontainers.image.documentation="https://raw.githubusercontent.com/haierkeys/custom-image-gateway/refs/heads/main/README.md"
-LABEL org.opencontainers.image.revision=${GIT_COMMIT}
+FROM debian:bookworm-slim
+LABEL name="custom-image-gateway-b2"
+LABEL version="latest"
+LABEL description="Backblaze B2 / S3-compatible image gateway for Obsidian."
+LABEL maintainer="lascivea"
+LABEL org.opencontainers.image.title="Obsidian Image API Gateway (B2)"
+LABEL org.opencontainers.image.authors="lascivea"
+LABEL org.opencontainers.image.url="https://github.com/lascivea/custom-image-gateway-b2"
+LABEL org.opencontainers.image.source="https://github.com/lascivea/custom-image-gateway-b2"
 LABEL org.opencontainers.image.licenses="Apache-2.0"
-LABEL org.opencontainers.image.vendor="HaierKeys"
-
-
 
 ENV TZ=Asia/Shanghai
 ENV P_NAME=api
 ENV P_BIN=image-api
-RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
-RUN apk --update add libstdc++ curl ca-certificates bash curl gcompat tzdata && \
-    cp /usr/share/zoneinfo/${TZ} /etc/localtime && \
+RUN apt-get update && apt-get install -y ca-certificates tzdata curl bash && \
+    ln -snf /usr/share/zoneinfo/${TZ} /etc/localtime && \
     echo ${TZ} > /etc/timezone && \
-    rm -rf  /tmp/* /var/cache/apk/*
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 EXPOSE 9000 9001
 RUN mkdir -p /${P_NAME}/
 VOLUME /${P_NAME}/config
 VOLUME /${P_NAME}/storage
-COPY ./build/${TARGETOS}_${TARGETARCH}/${P_BIN} /${P_NAME}/
-
-# 将脚本复制到容器中
 COPY entrypoint.sh /entrypoint.sh
-
-# 给脚本执行权限
 RUN chmod +x /entrypoint.sh
 
-# 使用 ENTRYPOINT 执行脚本
+ARG TARGETOS
+ARG TARGETARCH
+COPY --from=builder /app/build/${TARGETOS}_${TARGETARCH}/${P_BIN} /${P_NAME}/
 ENTRYPOINT ["/entrypoint.sh"]
